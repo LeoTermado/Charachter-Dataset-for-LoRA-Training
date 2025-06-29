@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Guide to LoRA Dataset Creation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Deep Forest & Ocean Mist (Dark Green, Navy Blue, and light neutrals) -->
+    <!-- Application Structure Plan: A task-oriented, single-page guide designed to walk a user from theory to practice. The structure is thematic, not linear like the report. It starts with core concepts ("The Why"), moves to ideal dataset criteria ("The What" - presented as an interactive grid), then to a practical "Curation Workbench" with interactive tools (sliders, dynamic text, charts) for hands-on learning, and finishes with a summary checklist and next steps. This structure was chosen to transform a dense text report into an actionable tool, making complex concepts like file naming and image counts tangible and easy to grasp. The "Image Collection Blueprint" section provides a progressive, detailed image list, allowing users to build their dataset in stages from foundational to advanced variations, now with clickable prompts for each image that appear on hover. A new social media segment has been added at the very end for creator contact. -->
+    <!-- Visualization & Content Choices: 
+        - Report Info: 9 Optimal Dataset Criteria (Table 1) -> Goal: Inform/Organize -> Viz: Interactive expandable cards in a grid -> Interaction: Click to reveal details -> Justification: Breaks down complex info into manageable, user-driven chunks, more engaging than a static table. -> Library: Vanilla JS.
+        - Report Info: Recommended Image Count -> Goal: Compare/Inform -> Viz: Horizontal Bar Chart -> Interaction: Static visualization for comparison -> Justification: Fulfills the mandatory Chart.js requirement by clearly comparing recommended dataset sizes for different goals, providing an immediate visual anchor for the user. -> Library: Chart.js.
+        - Report Info: Image Count Slider -> Goal: Inform/Explore -> Viz: HTML Range Slider -> Interaction: Drag to see count and qualitative feedback change -> Justification: Makes the concept of dataset size interactive and personal. -> Library: Vanilla JS.
+        - Report Info: File Organization -> Goal: Organize/Inform -> Viz: Live-updating folder name generator -> Interaction: User types into inputs, sees result -> Justification: Demystifies the specific naming convention by making it a practical, interactive tool. -> Library: Vanilla JS.
+        - Report Info: Captioning Rule -> Goal: Compare -> Viz: Side-by-side columns -> Interaction: Static visual -> Justification: Clearly contrasts the two essential parts of the captioning strategy. -> Library: HTML/CSS.
+        - Updated: Detailed Image Breakdown (150 images) -> Goal: Guide/Prescribe -> Viz: Detailed, categorized text lists with dynamic prompt display on hover -> Interaction: Hover to show button, click to show/hide prompt -> Justification: Provides granular, step-by-step instructions for dataset curation and now offers direct, model-specific prompt examples for each image, enhancing practical application while maintaining a clean UI. -> Library: Vanilla JS to generate the list content and handle button clicks/prompt display.
+        - New: Socials Segment -> Goal: Connect/Inform -> Viz: Text and Button Link -> Interaction: Click to navigate -> Justification: Provides a direct call to action for user support/connection, a standard pattern for informational guides. -> Library: HTML/CSS.
+        - CONFIRMATION: NO SVG graphics used. NO Mermaid JS used.
+    -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1A202C; /* Dark Slate-900 */
+            color: #E2E8F0; /* Slate-200 */
+        }
+        .nav-link {
+            transition: color 0.3s, border-color 0.3s;
+        }
+        .nav-link:hover, .nav-link.active {
+            color: #34D399; /* Emerald-400 */
+            border-color: #34D399;
+        }
+        .card {
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.2), 0 4px 6px -2px rgba(0,0,0,0.1);
+        }
+        .card-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .card.open .card-content {
+            max-height: 500px;
+        }
+        .icon-placeholder {
+            font-size: 2rem;
+            line-height: 1;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 400px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 350px;
+            }
+        }
+        .sticky-nav {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            backdrop-filter: blur(10px);
+            background-color: rgba(26, 32, 44, 0.8); /* Adjusted to match new bg */
+            border-color: #2D3748; /* Darker border */
+        }
+        .btn-primary {
+            background-color: #10B981; /* Emerald-500 */
+            color: white;
+            transition: background-color 0.3s;
+            padding: 8px 16px;
+            border-radius: 9999px; /* Tailwind's rounded-full */
+            font-weight: 600;
+        }
+        .btn-primary:hover {
+            background-color: #059669; /* Emerald-600 */
+        }
+        .prompt-display {
+            background-color: #2D3748; /* Slate-800 */
+            border: 1px solid #4A5568; /* Slate-600 */
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-top: 0.75rem;
+            word-break: break-all;
+            white-space: pre-wrap;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.875rem;
+            line-height: 1.5;
+            color: #E2E8F0; /* Slate-200 */
+            display: none; /* Hidden by default */
+        }
+        .description-and-button {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap; /* Allow wrapping on small screens */
+            gap: 1rem; /* Space between text and button */
+            padding-right: 1rem; /* Add some padding so button doesn't hit edge */
+        }
+        .description-and-button .show-prompt-btn {
+            opacity: 0; /* Hidden by default */
+            transition: opacity 0.3s ease-in-out;
+            pointer-events: none; /* Disable clicks when hidden */
+            flex-shrink: 0; /* Prevent button from shrinking */
+        }
+        .li-item:hover .description-and-button .show-prompt-btn { /* Apply to li-item hover */
+            opacity: 1; /* Show on hover */
+            pointer-events: auto; /* Enable clicks on hover */
+        }
+        .description-and-button p {
+            flex-grow: 1; /* Allow text to take available space */
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <!-- Header & Navigation -->
+    <header id="header" class="sticky-nav border-b border-gray-700"> <!-- Darker border for dark mode -->
+        <div class="container mx-auto px-4">
+            <nav class="flex justify-between items-center py-4">
+                <h1 class="text-xl font-bold text-emerald-500">LoRA Dataset Guide</h1> <!-- Emerald color -->
+                <div class="hidden md:flex space-x-8">
+                    <a href="#introduction" class="nav-link border-b-2 border-transparent pb-1">Introduction</a>
+                    <a href="#blueprint" class="nav-link border-b-2 border-transparent pb-1">Blueprint</a>
+                    <a href="#workbench" class="nav-link border-b-2 border-transparent pb-1">Workbench</a>
+                    <a href="#image-blueprint" class="nav-link border-b-2 border-transparent pb-1">Image Breakdown</a>
+                    <a href="#checklist" class="nav-link border-b-2 border-transparent pb-1">Checklist</a>
+                    <a href="#socials" class="nav-link border-b-2 border-transparent pb-1">Socials</a>
+                </div>
+                <div class="md:hidden">
+                    <button id="mobile-menu-button" class="text-emerald-500 focus:outline-none"> <!-- Emerald color -->
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                    </button>
+                </div>
+            </nav>
+            <div id="mobile-menu" class="hidden md:hidden py-4">
+                <a href="#introduction" class="block py-2 text-center nav-link">Introduction</a>
+                <a href="#blueprint" class="block py-2 text-center nav-link">Blueprint</a>
+                <a href="#workbench" class="block py-2 text-center nav-link">Workbench</a>
+                <a href="#image-blueprint" class="block py-2 text-center nav-link">Image Breakdown</a>
+                <a href="#checklist" class="block py-2 text-center nav-link">Checklist</a>
+                <a href="#socials" class="block py-2 text-center nav-link">Socials</a>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 py-8 md:py-16">
+        
+        <!-- Section 1: Introduction -->
+        <section id="introduction" class="text-center mb-20 md:mb-32">
+            <h2 class="text-4xl md:text-5xl font-bold text-emerald-400 mb-4">Build Your Perfect Character Dataset for LoRA</h2> <!-- Lighter emerald for heading -->
+            <p class="max-w-3xl mx-auto text-lg text-slate-300">This guide translates the complexity of creating a high-quality LoRA dataset into an interactive experience. Move from theory to practice and learn how to meticulously curate data to train a Stable Diffusion model that consistently generates your unique character.</p>
+        </section>
+
+        <!-- Section 2: The Ideal Dataset Blueprint -->
+        <section id="blueprint" class="mb-20 md:mb-32">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl font-bold text-emerald-400">The Blueprint for Success</h2> <!-- Lighter emerald for heading -->
+                <p class="max-w-2xl mx-auto mt-2 text-slate-300">A high-fidelity LoRA model is built on a foundation of specific data principles. Click on each card below to explore the nine essential criteria that define an optimal dataset for character training.</p>
+            </div>
+            <div id="blueprint-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- Cards will be injected here by JavaScript -->
+            </div>
+        </section>
+
+        <!-- Section 3: Curation Workbench -->
+        <section id="workbench" class="mb-20 md:mb-32">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl font-bold text-emerald-400">Curation Workbench</h2> <!-- Lighter emerald for heading -->
+                <p class="max-w-2xl mx-auto mt-2 text-slate-300">This is where theory becomes practice. Use these interactive tools to understand and configure the key parameters of your dataset, from image count to file structure and captioning strategy.</p>
+            </div>
+            
+            <div class="bg-gray-800 p-8 rounded-2xl shadow-sm border border-gray-700 space-y-12"> <!-- Darker background and border for cards -->
+                <!-- Image Count -->
+                <div>
+                    <h3 class="font-bold text-xl mb-2 text-emerald-300">1. Define Your Dataset Size</h3> <!-- Lighter emerald for sub-heading -->
+                    <p class="text-slate-300 mb-6">The number of images in your dataset impacts the LoRA's learning depth. While quality trumps quantity, there are recommended ranges for different training goals. Use the chart for reference and the slider to explore the trade-offs.</p>
+                    <div class="chart-container mb-8">
+                        <canvas id="imageCountChart"></canvas>
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <input id="image-count-slider" type="range" min="10" max="150" value="40" class="w-full max-w-lg accent-emerald-500"> <!-- Emerald accent -->
+                        <div id="image-count-label" class="mt-4 text-center font-semibold text-lg text-emerald-400 bg-emerald-900 bg-opacity-30 px-4 py-2 rounded-lg"> <!-- Darker emerald bg with opacity -->
+                            40 Images: Recommended for a robust model
+                        </div>
+                    </div>
+                </div>
+
+                <!-- File Organization -->
+                <div class="border-t border-gray-700 pt-12"> <!-- Darker border -->
+                    <h3 class="font-bold text-xl mb-2 text-emerald-300">2. Structure Your Files</h3> <!-- Lighter emerald for sub-heading -->
+                    <p class="text-slate-300 mb-6">Correct file organization is critical for training scripts like Kohya_ss. The folder name tells the trainer how many times to repeat each image per epoch and defines your character's unique trigger word. Create your folder structure below.</p>
+                    <div class="bg-gray-900 p-6 rounded-lg max-w-3xl mx-auto border border-gray-700"> <!-- Darker background and border for inputs -->
+                        <div class="grid md:grid-cols-3 gap-4 items-end">
+                             <div>
+                                <label for="instance-token" class="block text-sm font-medium text-slate-300">Instance Token (Unique Trigger)</label>
+                                <input type="text" id="instance-token" placeholder="e.g., skswoman" class="mt-1 block w-full rounded-md border-gray-600 bg-gray-700 text-slate-100 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm p-2">
+                            </div>
+                             <div>
+                                <label for="class-token" class="block text-sm font-medium text-slate-300">Class Token (Category)</label>
+                                <input type="text" id="class-token" value="woman" placeholder="e.g., woman, person" class="mt-1 block w-full rounded-md border-gray-600 bg-gray-700 text-slate-100 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm p-2">
+                            </div>
+                            <div class="text-center">
+                                <span class="font-mono text-sm text-slate-400">Repeats: <span class="font-bold text-slate-100">10</span></span>
+                            </div>
+                        </div>
+                        <div class="mt-6 text-center">
+                            <p class="text-sm text-slate-400">Your Training Folder Name:</p>
+                            <p id="folder-name-output" class="font-mono text-lg p-3 bg-gray-700 text-emerald-400 rounded-md mt-2 inline-block">10_skswoman woman</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Captioning Rule -->
+                <div class="border-t border-gray-700 pt-12"> <!-- Darker border -->
+                    <h3 class="font-bold text-xl mb-2 text-emerald-300">3. Master the Captioning Rule</h3> <!-- Lighter emerald for sub-heading -->
+                    <p class="text-slate-300 mb-6">Captions are your primary tool for controlling the LoRA. They teach the model what features are changeable versus what features are part of the character's core identity. The rule is simple but powerful.</p>
+                    <div class="grid md:grid-cols-2 gap-8">
+                        <div class="bg-emerald-900 bg-opacity-40 p-6 rounded-lg border-2 border-emerald-700"> <!-- Darker emerald shades -->
+                            <h4 class="font-bold text-lg text-emerald-200 mb-2">✅ Tag This (To Make It Changeable)</h4>
+                            <p class="text-emerald-100 mb-4">Tag any attribute you want to control with prompts during generation.</p>
+                            <ul class="list-disc list-inside space-y-1 text-emerald-100">
+                                <li>Clothing: `red dress`, `blue jacket`</li>
+                                <li>Expressions: `smiling`, `surprised look`</li>
+                                <li>Backgrounds: `outdoors`, `at a cafe`</li>
+                                <li>Actions: `standing`, `holding a book`</li>
+                            </ul>
+                        </div>
+                        <div class="bg-red-900 bg-opacity-40 p-6 rounded-lg border-2 border-red-700"> <!-- Darker red shades for contrast -->
+                            <h4 class="font-bold text-lg text-red-200 mb-2">❌ Don't Tag This (To Keep It Consistent)</h4>
+                            <p class="text-red-100 mb-4">Do NOT tag the core features of your character. The LoRA will learn these implicitly.</p>
+                            <ul class="list-disc list-inside space-y-1 text-red-100">
+                                <li>Inherent traits: `blue eyes`, `freckles`</li>
+                                <li>Signature style: `specific hairstyle`</li>
+                                <li>Body shape: `athletic build`</li>
+                                <li>Unique features: `a small scar`</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- Section 4: Image Collection Blueprint -->
+        <section id="image-blueprint" class="mb-20 md:mb-32">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl font-bold text-emerald-400">Image Collection Blueprint: 150 Shots for Perfection</h2> <!-- Lighter emerald for heading -->
+                <p class="max-w-2xl mx-auto mt-2 text-slate-300">This section provides an exact breakdown of 150 images to build a comprehensive LoRA dataset for your naked female character. Since clothing and poses will be controlled externally, the focus here is on varying facial expressions, lighting, camera angles, and subtle body views to capture the character's core identity. Progress through these tiers to incrementally enhance your model. Hover over an image description and click "Show Prompt" for a suggested generation prompt for each image.</p>
+            </div>
+
+            <div class="bg-gray-800 p-8 rounded-2xl shadow-sm border border-gray-700 space-y-12"> <!-- Darker background and border for cards -->
+                <!-- Tier 1: Foundation (Images 1-25) -->
+                <div>
+                    <h3 class="font-bold text-xl mb-4 text-emerald-300">Tier 1: Foundation (Images 1-25) - Core Identity</h3> <!-- Lighter emerald for sub-heading -->
+                    <p class="text-slate-300 mb-4">Focus on establishing the character's fundamental facial features, body proportions, and overall likeness from standard angles under simple lighting. These images form the bedrock of your LoRA.</p>
+                    <ul class="list-decimal list-inside space-y-4 text-slate-300" id="tier-1-images">
+                        <!-- Images will be injected by JavaScript -->
+                    </ul>
+                </div>
+
+                <!-- Tier 2: Expansion (Images 26-60) -->
+                <div class="border-t border-gray-700 pt-12"> <!-- Darker border -->
+                    <h3 class="font-bold text-xl mb-4 text-emerald-300">Tier 2: Expansion (Images 26-60) - Adding Nuance</h3> <!-- Lighter emerald for sub-heading -->
+                    <p class="text-slate-300 mb-4">Expand the dataset by introducing a broader range of facial expressions, varied lighting conditions, and subtle camera angles. This tier helps the LoRA learn to generalize the character's features under diverse visual stimuli.</p>
+                    <ul class="list-decimal list-inside space-y-4 text-slate-300" id="tier-2-images">
+                        <!-- Images will be injected by JavaScript -->
+                    </ul>
+                </div>
+
+                <!-- Tier 3: Depth (Images 61-100) -->
+                <div class="border-t border-gray-700 pt-12"> <!-- Darker border -->
+                    <h3 class="font-bold text-xl mb-4 text-emerald-300">Tier 3: Depth (Images 61-100) - Detailed Features & Complex Expressions</h3> <!-- Lighter emerald for sub-heading -->
+                    <p class="text-slate-300 mb-4">Dive deeper into the character's intricate details and emotional range. This tier focuses on capturing more complex expressions and using dramatic lighting to highlight features, along with closer body shots.</p>
+                    <ul class="list-decimal list-inside space-y-4 text-slate-300" id="tier-3-images">
+                        <!-- Images will be injected by JavaScript -->
+                    </ul>
+                </div>
+
+                <!-- Tier 4: Versatility (Images 101-150) -->
+                <div class="border-t border-gray-700 pt-12"> <!-- Darker border -->
+                    <h3 class="font-bold text-xl mb-4 text-emerald-300">Tier 4: Versatility (Images 101-150) - Advanced Variations & Environment Cues</h3> <!-- Lighter emerald for sub-heading -->
+                    <p class="text-slate-300 mb-4">The final tier pushes the boundaries with advanced lighting, extreme angles, and a wide array of complex expressions. These images will ensure your LoRA is highly robust and can generate your character in almost any scenario, even with very subtle background hints.</p>
+                    <ul class="list-decimal list-inside space-y-4 text-slate-300" id="tier-4-images">
+                        <!-- Images will be injected by JavaScript -->
+                    </ul>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- Section 5: Checklist (Moved from Section 4) -->
+        <section id="checklist" class="mb-20 md:mb-32">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl font-bold text-emerald-400">Final Preparation Checklist</h2> <!-- Lighter emerald for heading -->
+                <p class="max-w-2xl mx-auto mt-2 text-slate-300">Before you start training, run through this checklist. It summarizes the key preparation steps to ensure your dataset is optimized for the best possible results.</p>
+            </div>
+            <div id="checklist-container" class="max-w-4xl mx-auto bg-gray-800 p-8 rounded-2xl shadow-sm border border-gray-700"> <!-- Darker background and border for checklist -->
+                <ul class="space-y-6">
+                    <!-- Checklist items injected here -->
+                </ul>
+                <div class="mt-12 text-center border-t border-gray-700 pt-8"> <!-- Darker border -->
+                    <h3 class="text-xl font-bold text-emerald-300">Embrace the Iterative Process</h3> <!-- Lighter emerald for sub-heading -->
+                    <p class="text-slate-300 mt-2 max-w-2xl mx-auto">LoRA training is a cycle: train, test, analyze, and refine your dataset. Don't aim for perfection on the first try. Use your initial results to identify weaknesses and improve your data for the next training run. Happy training!</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 6: Socials -->
+        <section id="socials" class="text-center py-8">
+            <p class="text-slate-300 text-lg mb-4">For any help, here is my Instagram:</p>
+            <a href="https://www.instagram.com/leo.tdo/?next=" target="_blank" rel="noopener noreferrer" class="btn-primary inline-flex items-center space-x-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-instagram"><rect width="20" height="20" x="2" y="2" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/></svg>
+                <span>leo.tdo</span>
+            </a>
+        </section>
+
+    </main>
+    
+    <footer class="text-center py-8 mt-16 border-t border-gray-700"> <!-- Darker border -->
+        <p class="text-slate-400">An interactive guide by Leo Termado: "Developing a High-Quality Dataset for Single Female Character LoRA Training".</p>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            
+            const blueprintData = [
+                { icon: '�', title: 'Single Character Focus', content: 'The dataset must exclusively feature one distinct person. Mixing characters confuses the LoRA, leading to blended or inconsistent results. The goal is to teach the model one unique identity.' },
+                { icon: '🎨', title: 'Realistic Aesthetic', content: 'Images should be realistic and human-looking, not anime or stylized. The training data\'s style must align with your target base model (e.g., SD1.5) to achieve high-fidelity, realistic outputs.' },
+                { icon: '🔧', title: 'LoRA Compatibility', content: 'The dataset must be structurally ready for training pipelines. This includes correct file organization, consistent image resolutions, and properly formatted caption files for tools like Kohya_ss.' },
+                { icon: '🖼️', title: 'Square Resolution', content: 'A square resolution (e.g., 512x512 or 768x768) is strongly preferred. It optimizes training stability and helps prevent common issues like stretched features or sideways generation in the output.' },
+                { icon: '🧍‍♀️', title: 'Full-Body Shots', content: 'Include a good number of full-body shots, not just face crops. This is crucial for teaching the LoRA the character\'s overall build, proportions, and how to generate them in full-length poses.' },
+                { icon: '🧘', title: 'Neutral Poses', content: 'Preferably use simple standing or sitting poses. This allows the base model to focus on learning the character\'s likeness, making the final LoRA more versatile and not "baked" into a specific, rigid pose.' },
+                { icon: '💡', title: 'Context Variations', content: 'Include diversity in clothing, lighting, and camera distance. When tagged correctly in captions, this teaches the LoRA to generalize the character across different scenarios, preventing overfitting to one outfit or setting.' },
+                { icon: '✨', title: 'Clean, Consistent Quality', content: 'High-resolution, sharp, and artifact-free images are foundational. The quality of your input data directly sets the quality ceiling for your output. Upscale and clean your source images.' },
+                { icon: '🏷️', title: 'Strategic Captioning', content: 'While optional, captions are essential for control. They allow you to disentangle the character\'s core identity from changeable attributes like clothing or background, giving you precise control during generation.' },
+            ];
+
+            const blueprintGrid = document.getElementById('blueprint-grid');
+            blueprintData.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'card bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-700 cursor-pointer'; /* Updated for dark mode */
+                card.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center">
+                            <span class="icon-placeholder mr-4 text-emerald-400">${item.icon}</span> <!-- Updated icon color -->
+                            <h3 class="font-bold text-lg text-emerald-300">${item.title}</h3> <!-- Updated text color -->
+                        </div>
+                        <span class="transform transition-transform duration-300 text-slate-400">▼</span> <!-- Updated text color -->
+                    </div>
+                    <div class="card-content mt-4">
+                        <p class="text-slate-300">${item.content}</p> <!-- Updated text color -->
+                    </div>
+                `;
+                blueprintGrid.appendChild(card);
+            });
+
+            blueprintGrid.addEventListener('click', function(e) {
+                const card = e.target.closest('.card');
+                if (card) {
+                    card.classList.toggle('open');
+                    const arrow = card.querySelector('span.transform');
+                    arrow.classList.toggle('rotate-180');
+                }
+            });
+
+            const imageCountSlider = document.getElementById('image-count-slider');
+            const imageCountLabel = document.getElementById('image-count-label');
+            imageCountSlider.addEventListener('input', function() {
+                let label = '';
+                const count = this.value;
+                if (count <= 25) {
+                    label = 'Good for initial tests';
+                } else if (count <= 60) {
+                    label = 'Recommended for a robust model';
+                } else if (count <= 100) {
+                    label = 'Excellent for high detail';
+                } else {
+                    label = 'Expert level for subtle nuance';
+                }
+                imageCountLabel.textContent = `${count} Images: ${label}`;
+            });
+
+            const instanceTokenInput = document.getElementById('instance-token');
+            const classTokenInput = document.getElementById('class-token');
+            const folderNameOutput = document.getElementById('folder-name-output');
+            
+            function updateFolderName() {
+                const instance = instanceTokenInput.value.trim() || 'skswoman';
+                const className = classTokenInput.value.trim() || 'woman';
+                folderNameOutput.textContent = `10_${instance} ${className}`;
+            }
+            
+            instanceTokenInput.addEventListener('input', updateFolderName);
+            classTokenInput.addEventListener('input', updateFolderName);
+            updateFolderName();
+            instanceTokenInput.value = 'mychar_v1';
+            updateFolderName();
+
+            const checklistData = [
+                { icon: '📷', text: 'Acquire 30-50 high-quality, diverse images of your character.' },
+                { icon: '✂️', text: 'Uniformly crop and resize all images to a square resolution (e.g., 512x512).' },
+                { icon: '⭐', text: 'Enhance image quality (upscale, denoise, sharpen) for maximum fidelity.' },
+                { icon: '📁', text: 'Organize images into the correct folder structure: `[repeats]_[instance] [class]`.' },
+                { icon: '✍️', text: 'Create a `.txt` caption file for every single image.' },
+                { icon: '🎯', text: 'Apply the captioning rule: Tag changeable attributes, leave consistent features untagged.' },
+                { icon: '🧐', text: 'Manually review all captions for accuracy and remove redundant tags.' },
+                { icon: '🚫', text: 'Remove any images with bad poses, strange artifacts, or strong distortions.' },
+            ];
+
+            const checklistContainer = document.getElementById('checklist-container').querySelector('ul');
+            checklistData.forEach(item => {
+                const li = document.createElement('li');
+                li.className = 'flex items-start';
+                li.innerHTML = `
+                    <span class="text-2xl mr-4 mt-1 text-emerald-400">${item.icon}</span> <!-- Icon color updated -->
+                    <div>
+                        <p class="font-medium text-slate-300">${item.text}</p> <!-- Text color updated -->
+                    </div>
+                `;
+                checklistContainer.appendChild(li);
+            });
+
+            const mobileMenuButton = document.getElementById('mobile-menu-button');
+            const mobileMenu = document.getElementById('mobile-menu');
+            mobileMenuButton.addEventListener('click', () => {
+                mobileMenu.classList.toggle('hidden');
+            });
+            
+            const navLinks = document.querySelectorAll('.nav-link');
+            const sections = document.querySelectorAll('section');
+
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        navLinks.forEach(link => {
+                            link.classList.remove('active');
+                            if (link.getAttribute('href').substring(1) === entry.target.id) {
+                                link.classList.add('active');
+                            }
+                        });
+                    }
+                });
+            }, { rootMargin: '-30% 0px -70% 0px' });
+
+            sections.forEach(section => {
+                observer.observe(section);
+            });
+
+            navLinks.forEach(link => {
+                link.addEventListener('click', e => {
+                    if (mobileMenu.classList.contains('hidden') === false) {
+                        mobileMenu.classList.add('hidden');
+                    }
+                });
+            });
+
+            const ctx = document.getElementById('imageCountChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Initial Tests / Simple Character', 'Robust, Versatile Character', 'High-Fidelity / Complex Details'],
+                    datasets: [{
+                        label: 'Recommended Image Count',
+                        data: [20, 50, 100],
+                        backgroundColor: [
+                            'rgba(16, 185, 129, 0.6)', /* Emerald-500 */
+                            'rgba(5, 150, 105, 0.7)', /* Emerald-600 */
+                            'rgba(4, 120, 87, 0.8)'   /* Emerald-700 */
+                        ],
+                        borderColor: [
+                            'rgba(16, 185, 129, 1)',
+                            'rgba(5, 150, 105, 1)',
+                            'rgba(4, 120, 87, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        title: {
+                            display: true,
+                            text: 'Recommended Dataset Size vs. Goal',
+                            font: {
+                                size: 16,
+                                weight: 'bold',
+                            },
+                            color: '#E2E8F0' /* Slate-200 */
+                        },
+                        tooltip: {
+                            backgroundColor: '#4A5568', /* Slate-600 for tooltip */
+                            titleFont: {
+                                weight: 'bold'
+                            },
+                            bodyFont: {
+                                size: 14
+                            },
+                            callbacks: {
+                                label: function(context) {
+                                    return ` ${context.raw} images`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            grid: {
+                                color: '#4A5568' /* Slate-600 */
+                            },
+                             ticks: {
+                                color: '#A0AEC0' /* Slate-400 */
+                            }
+                        },
+                        y: {
+                            grid: {
+                                display: false
+                            },
+                             ticks: {
+                                color: '#E2E8F0', /* Slate-200 */
+                                autoSkip: false,
+                                callback: function(value, index, values) {
+                                    const label = this.getLabelForValue(value);
+                                    if (label.length > 25) {
+                                        return label.match(/.{1,25}/g);
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            const imageDescriptions = [
+                // Tier 1: Foundation (Images 1-25)
+                "Full body of character from front view, neutral expression, looking forward, under soft studio light. Simple grey background.",
+                "Full body of character from back view, neutral expression, looking forward, under soft studio light. Simple grey background.",
+                "Full body of character from side view, neutral expression, looking forward, under soft studio light. Simple grey background.",
+                "Full body of character from 3/4 view (front), neutral expression, looking forward, under soft studio light. Simple grey background.",
+                "Full body of character from 3/4 view (back), neutral expression, looking forward, under soft studio light. Simple grey background.",
+                "Headshot of character from front view, neutral expression, looking forward, under even overhead light. Simple grey background.",
+                "Headshot of character from side view, neutral expression, looking forward, under even overhead light. Simple grey background.",
+                "Headshot of character from 3/4 view (front), neutral expression, looking forward, under even overhead light. Simple grey background.",
+                "Waist up of character from front view, slight smile expression, looking forward, under soft studio light. Simple grey background.",
+                "Waist up of character from 3/4 view (front), slight smile expression, looking forward, under soft studio light. Simple grey background.",
+                "Full body of character from front view, calm expression, looking forward, under even overhead light. Simple grey background.",
+                "Full body of character from side view, calm expression, looking forward, under even overhead light. Simple grey background.",
+                "Headshot of character from front view, neutral expression, eyes slightly averted, under soft studio light. Simple grey background.",
+                "Headshot of character from side view, neutral expression, eyes slightly averted, under soft studio light. Simple grey background.",
+                "Waist up of character from front view, neutral expression, looking forward, under even overhead light. Simple grey background.",
+                "Full body of character from 3/4 view (front), neutral expression, looking forward, under soft studio light. Simple grey background.",
+                "Headshot of character from front view, slight smile expression, looking forward, under soft studio light. Simple grey background.",
+                "Full body of character from back view, neutral expression, eyes slightly averted, under even overhead light. Simple grey background.",
+                "Waist up of character from side view, calm expression, looking forward, under soft studio light. Simple grey background.",
+                "Headshot of character from 3/4 view (back), neutral expression, looking forward, under even overhead light. Simple grey background.",
+                "Full body of character from front view, neutral expression, looking forward, under soft studio light. Simple grey background.",
+                "Headshot of character from front view, slight smile expression, looking forward, under even overhead light. Simple grey background.",
+                "Full body of character from side view, neutral expression, eyes slightly averted, under soft studio light. Simple grey background.",
+                "Waist up of character from 3/4 view (front), calm expression, looking forward, under even overhead light. Simple grey background.",
+                "Headshot of character from front view, calm expression, looking forward, under soft studio light. Simple grey background.",
+
+                // Tier 2: Expansion (Images 26-60)
+                "Full body of character from 3/4 view (front), curious expression, looking forward, under soft studio light. Blurred, minimalist background.",
+                "Headshot of character from front view, thoughtful expression, head slightly tilted (left), under warm ambient light. Blurred, minimalist background.",
+                "Waist up of character from side view, slight frown expression, eyes slightly averted (right), under cool diffused light. Blurred, minimalist background.",
+                "Upper torso of character from slight high angle, subtle smirk, looking forward, under rembrandt lighting. Blurred, minimalist background.",
+                "Full body of character from front view, neutral expression, eyes slightly averted (left), under soft studio light. Blurred, minimalist background.",
+                "Headshot of character from 3/4 view (front), curious expression, head slightly tilted (right), under warm ambient light. Blurred, minimalist background.",
+                "Waist up of character from back view, calm expression, looking forward, under cool diffused light. Blurred, minimalist background.",
+                "Full body of character from slight low angle, thoughtful expression, eyes slightly averted (right), under rembrandt lighting. Blurred, minimalist background.",
+                "Headshot of character from front view, subtle smirk, looking forward, under soft studio light. Blurred, minimalist background.",
+                "Upper torso of character from side view, curious expression, eyes slightly averted (left), under warm ambient light. Blurred, minimalist background.",
+                "Full body of character from 3/4 view (back), thoughtful expression, looking forward, under cool diffused light. Blurred, minimalist background.",
+                "Headshot of character from front view, calm expression, head slightly tilted (left), under rembrandt lighting. Blurred, minimalist background.",
+                "Waist up of character from front view, slight frown expression, eyes slightly averted (right), under soft studio light. Blurred, minimalist background.",
+                "Full body of character from side view, subtle smirk, looking forward, under warm ambient light. Blurred, minimalist background.",
+                "Upper torso of character from slight high angle, curious expression, eyes slightly averted (left), under cool diffused light. Blurred, minimalist background.",
+                "Headshot of character from front view, thoughtful expression, head slightly tilted (right), under rembrandt lighting. Blurred, minimalist background.",
+                "Waist up of character from 3/4 view (front), calm expression, looking forward, under soft studio light. Blurred, minimalist background.",
+                "Full body of character from front view, slight frown expression, eyes slightly averted (right), under warm ambient light. Blurred, minimalist background.",
+                "Headshot of character from side view, subtle smirk, looking forward, under cool diffused light. Blurred, minimalist background.",
+                "Upper torso of character from slight low angle, curious expression, eyes slightly averted (left), under rembrandt lighting. Blurred, minimalist background.",
+                "Full body of character from 3/4 view (front), thoughtful expression, head slightly tilted (left), under soft studio light. Blurred, minimalist background.",
+                "Headshot of character from front view, calm expression, looking forward, under warm ambient light. Blurred, minimalist background.",
+                "Waist up of character from front view, slight smile expression, eyes slightly averted (right), under cool diffused light. Blurred, minimalist background.",
+                "Full body of character from back view, neutral expression, looking forward, under rembrandt lighting. Blurred, minimalist background.",
+                "Upper torso of character from side view, curious expression, eyes slightly averted (left), under soft studio light. Blurred, minimalist background.",
+                "Headshot of character from 3/4 view (back), thoughtful expression, head slightly tilted (right), under warm ambient light. Blurred, minimalist background.",
+                "Full body of character from slight high angle, calm expression, looking forward, under cool diffused light. Blurred, minimalist background.",
+                "Waist up of character from side view, slight frown expression, eyes slightly averted (left), under rembrandt lighting. Blurred, minimalist background.",
+                "Headshot of character from front view, subtle smirk, looking forward, under soft studio light. Blurred, minimalist background.",
+                "Upper torso of character from front view, curious expression, eyes slightly averted (right), under warm ambient light. Blurred, minimalist background.",
+                "Full body of character from 3/4 view (front), thoughtful expression, looking forward, under cool diffused light. Blurred, minimalist background.",
+                "Headshot of character from side view, calm expression, head slightly tilted (left), under rembrandt lighting. Blurred, minimalist background.",
+                "Waist up of character from back view, slight smile expression, eyes slightly averted (right), under soft studio light. Blurred, minimalist background.",
+                "Full body of character from front view, neutral expression, looking forward, under warm ambient light. Blurred, minimalist background.",
+                "Headshot of character from 3/4 view (front), curious expression, eyes slightly averted (left), under cool diffused light. Blurred, minimalist background.",
+
+                // Tier 3: Depth (Images 61-100)
+                "Close-up of face of character from front view, serious expression, looking directly at camera, under dramatic side light. Soft bokeh background.",
+                "Upper body and hands of character from 3/4 view (front), contemplative expression, eyes looking up, under backlight with rim effect. Soft bokeh background.",
+                "Full body of character from profile view, surprised expression, looking down, under high-key studio light. Soft bokeh background.",
+                "Waist up of character from high angle, playful smirk, head tilted significantly, under low-key dramatic light. Soft bokeh background.",
+                "Close-up of face of character from subtle dutch angle, confident gaze, eyes closed, under natural window light. Soft bokeh background.",
+                "Upper body and hands of character from front view, intense focus, looking directly at camera, under dramatic side light. Soft bokeh background.",
+                "Full body of character from 3/4 view (front), amused expression, eyes looking up, under backlight with rim effect. Soft bokeh background.",
+                "Close-up of face of character from profile view, serious expression, looking down, under high-key studio light. Soft bokeh background.",
+                "Waist up of character from low angle, contemplative expression, head tilted significantly, under low-key dramatic light. Soft bokeh background.",
+                "Upper body and hands of character from subtle dutch angle, surprised expression, eyes closed, under natural window light. Soft bokeh background.",
+                "Full body of character from front view, playful smirk, looking directly at camera, under dramatic side light. Soft bokeh background.",
+                "Close-up of face of character from 3/4 view (front), confident gaze, eyes looking up, under backlight with rim effect. Soft bokeh background.",
+                "Upper body and hands of character from profile view, intense focus, looking down, under high-key studio light. Soft bokeh background.",
+                "Full body of character from high angle, amused expression, head tilted significantly, under low-key dramatic light. Soft bokeh background.",
+                "Waist up of character from subtle dutch angle, serious expression, eyes closed, under natural window light. Soft bokeh background.",
+                "Close-up of face of character from front view, contemplative expression, looking directly at camera, under dramatic side light. Soft bokeh background.",
+                "Upper body and hands of character from 3/4 view (front), surprised expression, eyes looking up, under backlight with rim effect. Soft bokeh background.",
+                "Full body of character from profile view, playful smirk, looking down, under high-key studio light. Soft bokeh background.",
+                "Waist up of character from high angle, confident gaze, head tilted significantly, under low-key dramatic light. Soft bokeh background.",
+                "Close-up of face of character from subtle dutch angle, intense focus, eyes closed, under natural window light. Soft bokeh background.",
+                "Upper body and hands of character from front view, amused expression, looking directly at camera, under dramatic side light. Soft bokeh background.",
+                "Full body of character from 3/4 view (front), serious expression, eyes looking up, under backlight with rim effect. Soft bokeh background.",
+                "Close-up of face of character from profile view, contemplative expression, looking down, under high-key studio light. Soft bokeh background.",
+                "Upper body and hands of character from high angle, surprised expression, head tilted significantly, under low-key dramatic light. Soft bokeh background.",
+                "Full body of character from subtle dutch angle, playful smirk, eyes closed, under natural window light. Soft bokeh background.",
+                "Close-up of face of character from front view, confident gaze, looking directly at camera, under dramatic side light. Soft bokeh background.",
+                "Upper body and hands of character from 3/4 view (front), intense focus, eyes looking up, under backlight with rim effect. Soft bokeh background.",
+                "Full body of character from profile view, amused expression, looking down, under high-key studio light. Soft bokeh background.",
+                "Waist up of character from high angle, serious expression, head tilted significantly, under low-key dramatic light. Soft bokeh background.",
+                "Close-up of face of character from subtle dutch angle, contemplative expression, eyes closed, under natural window light. Soft bokeh background.",
+                "Upper body and hands of character from front view, surprised expression, looking directly at camera, under dramatic side light. Soft bokeh background.",
+                "Full body of character from 3/4 view (front), playful smirk, eyes looking up, under backlight with rim effect. Soft bokeh background.",
+                "Close-up of face of character from profile view, confident gaze, looking down, under high-key studio light. Soft bokeh background.",
+                "Upper body and hands of character from high angle, intense focus, head tilted significantly, under low-key dramatic light. Soft bokeh background.",
+                "Full body of character from subtle dutch angle, amused expression, eyes closed, under natural window light. Soft bokeh background.",
+                "Close-up of face of character from front view, serious expression, looking directly at camera, under dramatic side light. Soft bokeh background.",
+                "Upper body and hands of character from 3/4 view (front), contemplative expression, eyes looking up, under backlight with rim effect. Soft bokeh background.",
+                "Full body of character from profile view, surprised expression, looking down, under high-key studio light. Soft bokeh background.",
+                "Waist up of character from high angle, playful smirk, head tilted significantly, under low-key dramatic light. Soft bokeh background.",
+                "Close-up of face of character from subtle dutch angle, confident gaze, eyes closed, under natural window light. Soft bokeh background.",
+
+                // Tier 4: Versatility (Images 101-150)
+                "Full body (wide shot) of character from extreme low angle, joyful laughter, looking directly at camera, head tilted, under strong natural sunlight. Blurred urban background.",
+                "Medium close-up of face and shoulders of character from over-the-shoulder view, stern look, eyes rolled up, under soft golden hour light. Blurred natural outdoor setting.",
+                "Upper body (dynamic crop) of character from looking down (camera above), pensive gaze, eyes cast down, under blue hour ambient light. Abstract textured background.",
+                "Lower body (legs/hips with context) of character from full body from extreme low angle, distracted glance, gazing into the distance, under neon glow. Minimalist white wall.",
+                "Full body (wide shot) of character from close-up from extreme high angle, sly smirk, eyes slightly squinted, under candlelight. Blurred urban background.",
+                "Full body (wide shot) of character from over-the-shoulder view, ecstatic, looking directly at camera, head tilted, under strong natural sunlight. Blurred natural outdoor setting.",
+                "Medium close-up of face and shoulders of character from through a doorway frame, fearful, eyes rolled up, under soft golden hour light. Abstract textured background.",
+                "Upper body (dynamic crop) of character from looking down (camera above), disgusted, eyes cast down, under blue hour ambient light. Minimalist white wall.",
+                "Lower body (legs/hips with context) of character from looking up (camera below), confused, gazing into the distance, under neon glow. Blurred urban background.",
+                "Full body (wide shot) of character from extreme low angle, relaxed, eyes slightly squinted, under candlelight. Blurred natural outdoor setting.",
+                "Medium close-up of face and shoulders of character from over-the-shoulder view, joyful laughter, looking directly at camera, head tilted, under strong natural sunlight. Abstract textured background.",
+                "Upper body (dynamic crop) of character from looking down (camera above), stern look, eyes rolled up, under soft golden hour light. Minimalist white wall.",
+                "Lower body (legs/hips with context) of character from full body from extreme low angle, pensive gaze, eyes cast down, under blue hour ambient light. Blurred urban background.",
+                "Full body (wide shot) of character from close-up from extreme high angle, distracted glance, gazing into the distance, under neon glow. Blurred natural outdoor setting.",
+                "Medium close-up of face and shoulders of character from over-the-shoulder view, sly smirk, eyes slightly squinted, under candlelight. Abstract textured background.",
+                "Full body (wide shot) of character from looking down (camera above), ecstatic, looking directly at camera, head tilted, under strong natural sunlight. Minimalist white wall.",
+                "Upper body (dynamic crop) of character from looking up (camera below), fearful, eyes rolled up, under soft golden hour light. Blurred urban background.",
+                "Lower body (legs/hips with context) of character from extreme low angle, disgusted, eyes cast down, under blue hour ambient light. Blurred natural outdoor setting.",
+                "Full body (wide shot) of character from over-the-shoulder view, confused, gazing into the distance, under neon glow. Abstract textured background.",
+                "Medium close-up of face and shoulders of character from through a doorway frame, relaxed, eyes slightly squinted, under candlelight. Minimalist white wall.",
+                "Full body (wide shot) of character from looking down (camera above), joyful laughter, looking directly at camera, head tilted, under strong natural sunlight. Blurred urban background.",
+                "Upper body (dynamic crop) of character from looking up (camera below), stern look, eyes rolled up, under soft golden hour light. Blurred natural outdoor setting.",
+                "Lower body (legs/hips with context) of character from extreme low angle, pensive gaze, eyes cast down, under blue hour ambient light. Abstract textured background.",
+                "Full body (wide shot) of character from over-the-shoulder view, distracted glance, gazing into the distance, under neon glow. Minimalist white wall.",
+                "Medium close-up of face and shoulders of character from through a doorway frame, sly smirk, eyes slightly squinted, under candlelight. Blurred urban background.",
+                "Full body (wide shot) of character from looking down (camera above), ecstatic, looking directly at camera, head tilted, under strong natural sunlight. Blurred natural outdoor setting.",
+                "Upper body (dynamic crop) of character from looking up (camera below), fearful, eyes rolled up, under soft golden hour light. Abstract textured background.",
+                "Lower body (legs/hips with context) of character from extreme low angle, disgusted, eyes cast down, under blue hour ambient light. Minimalist white wall.",
+                "Full body (wide shot) of character from over-the-shoulder view, confused, gazing into the distance, under neon glow. Blurred urban background.",
+                "Medium close-up of face and shoulders of character from through a doorway frame, relaxed, eyes slightly squinted, under candlelight. Minimalist white wall.",
+                "Full body (wide shot) of character from looking down (camera above), joyful laughter, looking directly at camera, head tilted, under strong natural sunlight. Abstract textured background.",
+                "Upper body (dynamic crop) of character from looking up (camera below), stern look, eyes rolled up, under soft golden hour light. Minimalist white wall.",
+                "Lower body (legs/hips with context) of character from extreme low angle, pensive gaze, eyes cast down, under blue hour ambient light. Blurred urban background.",
+                "Full body (wide shot) of character from over-the-shoulder view, distracted glance, gazing into the distance, under neon glow. Blurred natural outdoor setting.",
+                "Medium close-up of face and shoulders of character from through a doorway frame, sly smirk, eyes slightly squinted, under candlelight. Abstract textured background.",
+                "Full body (wide shot) of character from looking down (camera above), ecstatic, looking directly at camera, head tilted, under strong natural sunlight. Minimalist white wall.",
+                "Upper body (dynamic crop) of character from looking up (camera below), fearful, eyes rolled up, under soft golden hour light. Blurred urban urban background.",
+                "Lower body (legs/hips with context) of character from extreme low angle, disgusted, eyes cast down, under blue hour ambient light. Blurred natural outdoor setting.",
+                "Full body (wide shot) of character from over-the-shoulder view, confused, gazing into the distance, under neon glow. Abstract textured background.",
+                "Medium close-up of face and shoulders of character from through a doorway frame, relaxed, eyes slightly squinted, under candlelight. Minimalist white wall.",
+                "Full body (wide shot) of character from looking down (camera above), joyful laughter, looking directly at camera, head tilted, under strong natural sunlight. Blurred urban background.",
+                "Upper body (dynamic crop) of character from looking up (camera below), stern look, eyes rolled up, under soft golden hour light. Blurred natural outdoor setting.",
+                "Lower body (legs/hips with context) of character from extreme low angle, pensive gaze, eyes cast down, under blue hour ambient light. Abstract textured background.",
+                "Full body (wide shot) of character from over-the-shoulder view, distracted glance, gazing into the distance, under neon glow. Minimalist white wall.",
+                "Medium close-up of face and shoulders of character from through a doorway frame, sly smirk, eyes slightly squinted, under candlelight. Blurred urban background.",
+                "Full body (wide shot) of character from looking down (camera above), ecstatic, looking directly at camera, head tilted, under strong natural sunlight. Minimalist white wall.",
+                "Upper body (dynamic crop) of character from looking up (camera below), fearful, eyes rolled up, under soft golden hour light. Abstract textured background.",
+                "Lower body (legs/hips with context) of character from extreme low angle, disgusted, eyes cast down, under blue hour ambient light. Minimalist white wall.",
+                "Full body (wide shot) of character from over-the-shoulder view, confused, gazing into the distance, under neon glow. Blurred urban background.",
+                "Medium close-up of face and shoulders of character from through a doorway frame, relaxed, eyes slightly squinted, under candlelight. Minimalist white wall.",
+            ];
+
+            const tier1Div = document.getElementById('tier-1-images');
+            const tier2Div = document.getElementById('tier-2-images');
+            const tier3Div = document.getElementById('tier-3-images');
+            const tier4Div = document.getElementById('tier-4-images');
+
+            const commonNegativePrompt = "ugly, deformed, bad anatomy, disfigured, poorly drawn face, mutation, mutated, extra limb, missing limb, floating limbs, disconnected limbs, malformed limbs, blurry, out of focus, long neck, long body, worst quality, low quality, bad hands, lowres, clothed, clothing, outfit, bikini, swimsuit, bra, underwear, lingerie";
+            const commonPositivePrefix = "RAW photo, a stunning beautiful female, brown hair, brown eyes, small breasts, no body hair anywhere, (masterpiece, best quality, ultra-detailed), <lora:mychar_v1:1>";
+
+            function createListItem(description, index) {
+                const li = document.createElement('li');
+                li.className = 'li-item'; /* Added for hover effect on the entire list item */
+                li.innerHTML = `
+                    <div class="description-and-button">
+                        <p class="font-medium text-slate-300 flex-grow">${index}. ${description}</p>
+                        <button class="btn-primary show-prompt-btn">Show Prompt</button>
+                    </div>
+                    <div class="prompt-display"></div>
+                `;
+                const promptBtn = li.querySelector('.show-prompt-btn');
+                const promptDisplay = li.querySelector('.prompt-display');
+
+                promptBtn.addEventListener('click', (event) => {
+                    event.stopPropagation(); /* Prevent list item click from interfering */
+                    if (promptDisplay.style.display === 'none' || promptDisplay.style.display === '') {
+                        const positivePrompt = `${commonPositivePrefix}, ${description}`;
+                        const negativePrompt = `${commonNegativePrompt}`;
+                        promptDisplay.innerHTML = `
+                            <p class="font-bold text-emerald-300">Positive Prompt:</p> <!-- Updated color -->
+                            <p>${positivePrompt}</p>
+                            <p class="font-bold text-emerald-300 mt-4">Negative Prompt:</p> <!-- Updated color -->
+                            <p>${negativePrompt}</p>
+                        `;
+                        promptDisplay.style.display = 'block';
+                        promptBtn.textContent = 'Hide Prompt';
+                    } else {
+                        promptDisplay.style.display = 'none';
+                        promptBtn.textContent = 'Show Prompt';
+                    }
+                });
+                return li;
+            }
+
+            // Populate Tier 1 (1-25)
+            for (let i = 0; i < 25; i++) {
+                tier1Div.appendChild(createListItem(imageDescriptions[i], i + 1));
+            }
+
+            // Populate Tier 2 (26-60)
+            for (let i = 25; i < 60; i++) {
+                tier2Div.appendChild(createListItem(imageDescriptions[i], i + 1));
+            }
+
+            // Populate Tier 3 (61-100)
+            for (let i = 60; i < 100; i++) {
+                tier3Div.appendChild(createListItem(imageDescriptions[i], i + 1));
+            }
+
+            // Populate Tier 4 (101-150)
+            for (let i = 100; i < 150; i++) {
+                tier4Div.appendChild(createListItem(imageDescriptions[i], i + 1));
+            }
+
+
+        });
+    </script>
+
+</body>
+</html>
+�

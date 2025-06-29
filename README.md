@@ -1,4 +1,4 @@
-# Realistic Female Character Dataset Guide for LoRA Training
+# Realistic Character Dataset Guide for LoRA Training
 
 This project is a specialized guide for building **high-quality image datasets** to train LoRA models focused on **realistic, human-like AI female characters** using Stable Diffusion.
 

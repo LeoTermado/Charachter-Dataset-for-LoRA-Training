@@ -8,7 +8,7 @@ If you're creating a custom LoRA of a realistic-looking female model — not ani
 
 ## 🔗 Live Guide (Webpage)
 
-👉 [**Open the Full Dataset Guide**](https://leotermado.github.io/Charachter-Dataset-for-LoRA-Training/)
+👉 [**Open the Full Dataset Guide**](https://leotermado.github.io/Character-Dataset-for-LoRA-Training/)
 
 > Interactive | No installation needed | Fully self-contained
 
@@ -50,7 +50,7 @@ This guide reflects real-world LoRA training logic and is structured to maximize
 ## 🔨 How to Use It
 
 1. Open the guide website:  
-   👉 [https://leotermado.github.io/Charachter-Dataset-for-LoRA-Training/](https://leotermado.github.io/Charachter-Dataset-for-LoRA-Training/)
+   👉 [https://leotermado.github.io/Charachter-Dataset-for-LoRA-Training/](https://leotermado.github.io/Character-Dataset-for-LoRA-Training/)
 
 2. Follow the image breakdown and capture guide for your subject.
 

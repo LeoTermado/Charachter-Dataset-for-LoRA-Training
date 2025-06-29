@@ -16,7 +16,7 @@ If you're creating a custom LoRA of a realistic-looking female model — not ani
 
 ## 📦 What's Inside
 
-- 🧱 **Tiered Image Breakdown** (150 images):  
+- 🧱 **Tiered Image Breakdown** (up to 150 images):  
   Carefully structured into 4 tiers — from clean full-body foundation shots to complex lighting and expressive portraits — designed for learning character identity across real-world conditions.
 
 - 🧠 **Realism-Only Focus**:  
@@ -66,4 +66,4 @@ This resource is open and free to use or adapt. Please credit the original guide
 
 ---
 
-> Created with purpose by [leotermado](https://github.com/leotermado) — sharing knowledge for higher-fidelity AI characters.
+> Created with purpose by [leotermado](https://github.com/leotermado)
